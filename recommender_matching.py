@@ -30,21 +30,19 @@ class Recommender_matching():
 
     """
     def __init__(self,model,device,senior_df =False,pubs_df=None):
-        self.DIR = 'K:/Shared drives/RPI-Dan Peled HIPAA/Seder/Funds_recommendations/all/'
         self.model=model #pre-trained model as an input
         self.fit_action = False if pubs_df is None else True
         if not self.fit_action:
-            self.pubs_df= pd.read_csv("K:\Shared drives\RPI-Dan Peled HIPAA\Seder\horizon_recommendations\pubs_df_fit.csv")
+            self.pubs_df= pd.read_csv("pubs_df_fit.csv")
         else:
             self.pubs_df=pubs_df.copy() #publications dataframe
         self.senior_df=senior_df
         if senior_df :
-            senior_df = pd.read_excel("K:/Shared drives/RPI-Dan Peled HIPAA/Seder/Funds_recommendations/full_segel_list_for_rec.xlsx")
+            senior_df = pd.read_excel("full_segel_list_for_rec.xlsx")
             self.pubs_df = pd.merge(left=self.pubs_df,right=senior_df[['ScopusName','circle']],how='outer',left_on=['Name'],right_on=['ScopusName']).dropna(subset=['description']).drop_duplicates(subset=['title', 'coverDate', 'publicationName', 'description', 'authkeywords', 'scopus_id', 'Name']).drop(labels=['ScopusName_y','ScopusName_x'],axis = 1)
 #             self.pubs_df = pd.merge(left=self.pubs_df,right=senior_df[['ScopusName','faculties','circle']],how='outer',left_on=['Name'],right_on=['ScopusName']).dropna(subset=['description']).drop_duplicates(subset=['title', 'coverDate', 'publicationName', 'description', 'authkeywords', 'scopus_id', 'Name'])
             self.pubs_df['circle']= self.pubs_df['circle'].fillna('')
             self.pubs_df= self.pubs_df[self.pubs_df['Name'].isin(senior_df['ScopusName'])].copy() #only senior staff publications
-            self.DIR = 'K:/Shared drives/RPI-Dan Peled HIPAA/Seder/Funds_recommendations/seniors/'
 
         self.device = device #CUDA or cpu 
         self.fit_time = 0
@@ -102,11 +100,7 @@ class Recommender_matching():
         '''
         return self.model.encode(x, convert_to_tensor=True,device= self.device).cpu().detach().numpy().reshape(1,-1)
 
-    def save_best_recommendations(self,topic = ''):
-        self.recommended['match score'] =  (((self.recommended['match score']*100).apply(np.round)).apply(lambda x:int(x))).apply(lambda x: str(x)+'%')
-        self.recommended= self.recommended.sort_values(by='match score',ascending=False)
-        path = self.DIR+f'Best_Recommendations_For_{topic}.xlsx'
-        self.recommended.to_excel(path,index = False)  
+
         
     def cosine_sim(self,array1, array2):
         sumyy = np.einsum('ij,ij->i',array2,array2)
