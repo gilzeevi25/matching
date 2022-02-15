@@ -8,7 +8,7 @@ import time
 import numexpr as ne
 from sentence_transformers import SentenceTransformer
 import streamlit as st
-from session_state import get_state
+
 
 
 
