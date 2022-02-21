@@ -9,7 +9,6 @@ import numexpr as ne
 from sentence_transformers import SentenceTransformer
 import streamlit as st
 import pickle
-from session_state import get_state
 
 
 class Recommender_matching_segel():
