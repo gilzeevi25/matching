@@ -8,8 +8,84 @@ import time
 import numexpr as ne
 from sentence_transformers import SentenceTransformer
 import streamlit as st
+import pickle
 from session_state import get_state
 
+
+class Recommender_matching_segel():
+    """
+    This class will perform end to end recommendations.
+    it hold preprocessing:
+      - cluster the information of the Publications into one long text in a form of: ['title']+ '[SEP]'+ ['description'] + '[SEP]'+ ['authkeywords']
+      - cluster the information of the Grants into one long text in a form of: ['title']  + '[SEP]'+ ['tags'] + '[SEP]'+ ['keywords']
+    Fit:
+      -Embedding the publications into a torch.Tensor column inplace of pubs_df
+      -Embedding the grants into a torch.Tensor column inplace of grants df
+
+    Predict - diffrent kind of predictions, asked by user:
+      - predict for each researcher , top n recommendations
+      - creates a dataframe of top general recommendations, considering a given threshold
+
+    Save* - saving features for all tables
+
+    """
+
+    def __init__(self, model, device, senior_df=False, pubs_df=None):
+        self.DIR = 'K:/Shared drives/RPI-Dan Peled HIPAA/Seder/Funds_recommendations/all/'
+        self.model = model  # pre-trained model as an input
+        self.senior_df = pd.read_excel(
+            "K:/Shared drives/RPI-Dan Peled HIPAA/Seder/Funds_recommendations/segel_thin.xlsx")
+        self.fit_action = False if pubs_df is None else True
+        self.device = device  # CUDA or cpu
+        self.fit_time = 0
+        self.predict_time = 0
+        with open('segel_bahir_embd.pkl', 'rb') as f:
+            loaded_dict = pickle.load(f)
+        f.close()
+        with open('segel_bahir_wrn.pkl', 'rb') as f:
+            self.wrn = pickle.load(f)
+        f.close()
+        self.pubs_df = pd.DataFrame(loaded_dict.items(), columns=['Name', 'embedded'])
+
+    def predict(self, text, Th=80, Number=0):
+        t = time.time()
+        self.recommended = pd.DataFrame(
+            columns=['Text_Matched', 'Researcher', 'match score', 'faculties', 'circle', 'warning'])
+        self.text_embd = self.embed_text(text)
+        for name in tqdm(self.pubs_df.Name.unique()):
+            rel_df = self.pubs_df[self.pubs_df.Name == name].reset_index(drop=True)
+            vals = self.senior_df[self.senior_df.ScopusName == name].values[0]
+            author_embeddings = rel_df.embedded.values[0]
+            sim = self.cosine_sim(author_embeddings, self.text_embd)
+            if Number > 0:
+                self.recommended.loc[-1] = [text[0:10] + '...', name, sim, vals[1], vals[2], self.wrn[name]];
+                self.recommended.reset_index(drop=True, inplace=True)
+            elif sim * 100 >= Th:  # add to general recommendation table if score is higher than decided threshold (default is 90% score)
+                self.recommended.loc[-1] = [text[0:10] + '...', name, sim, vals[1], vals[2], self.wrn[name]];
+                self.recommended.reset_index(drop=True, inplace=True)
+        if Number > 0:
+            self.recommended = self.recommended.loc[self.recommended['match score'].nlargest(Number).index]
+        self.recommended['match score'] = (
+            ((self.recommended['match score'] * 100).apply(np.round)).apply(lambda x: int(x))).apply(
+            lambda x: str(x) + '%')
+        self.recommended = self.recommended.sort_values(by='match score', ascending=False)
+        self.predict_time = (time.time() - t) / 60  # record mintues, not seconds
+        print(f'Time taken to Predict:{self.predict_time:.0f} minutes')
+        return self.recommended.reset_index(drop=True)
+
+    def embed_text(self, x):
+        '''
+        Embbed the self stacked grants relevant text into a numpy array
+        '''
+        return self.model.encode(x, convert_to_tensor=True, device=self.device).cpu().detach().numpy().reshape(1, -1)
+
+    def cosine_sim(self, array1, array2):
+        sumyy = np.einsum('ij,ij->i', array2, array2)
+        sumxx = np.einsum('ij,ij->i', array1, array1)[:, None]
+        sumxy = array1.dot(array2.T)
+        sqrt_sumxx = ne.evaluate('sqrt(sumxx)')
+        sqrt_sumyy = ne.evaluate('sqrt(sumyy)')
+        return ne.evaluate('(sumxy/sqrt_sumxx)/sqrt_sumyy')[0][0]
 
 
 class Recommender_matching():
@@ -90,7 +166,7 @@ class Recommender_matching():
         self.recommended= self.recommended.sort_values(by='match score',ascending=False)
         self.predict_time =(time.time() -t)/60  #record mintues, not seconds
         print(f'Time taken to Predict:{self.predict_time:.0f} minutes')
-        return self.recommended
+        return self.recommended.reset_index(drop=True)
 
     def unify_text_pubs(self,x):
         '''
@@ -119,42 +195,15 @@ class Recommender_matching():
         return ne.evaluate('(sumxy/sqrt_sumxx)/sqrt_sumyy')[0][0]
 
 
-# def setup(senior_df=True) -> Recommender_matching:
-#     print('Running setup')
-#     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-#     print('Using device:', device)
-#     model = SentenceTransformer('allenai-specter')
-#     rec = Recommender_matching(model,device,senior_df)
-#     rec.fit()
-#     return rec
-# del st.session_state['rec']
-# state = get_state(setup, senior_df=True)
-if 'rec' not in st.session_state:
-    st.session_state['rec']= Recommender_matching(SentenceTransformer('allenai-specter'),torch.device('cuda' if torch.cuda.is_available() else 'cpu'),senior_df=True)
 
+if 'rec' not in st.session_state:
+    st.session_state['rec']= Recommender_matching_segel(SentenceTransformer('allenai-specter'),torch.device('cuda' if torch.cuda.is_available() else 'cpu'))
 st.title('Matching search engine based on publications')
 st.subheader('Developed by Research Authority - University of Haifa')
 title = st.text_input('Enter a Piece of text to find a match')
+threshold = st.text_input('Enter a Threshold for matching scores')
 st.write('Presenting only researchers with more than 80% match:')
-# state.predict(title, Th=80)
-st.dataframe(data=st.session_state['rec'].predict(title, Th=80), width=None, height=None)
-# rec.predict(lines, Th=80)
+st.dataframe(data=st.session_state['rec'].predict(title, Th=int(threshold)), width=None, height=None)
 #
-#
-# # In[80]:
-#
-#
-# rec.recommended.sort_values(by='match score',ascending =False)
-#
-#
-# # In[28]:
-#
-#
-# rec.recommended.loc[rec.recommended['match score'].nlargest(2).index]
-#
-#
-# # In[ ]:
-
-
 
 
