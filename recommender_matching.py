@@ -33,8 +33,7 @@ class Recommender_matching_segel():
     def __init__(self, model, device, senior_df=False, pubs_df=None):
         self.DIR = 'K:/Shared drives/RPI-Dan Peled HIPAA/Seder/Funds_recommendations/all/'
         self.model = model  # pre-trained model as an input
-        self.senior_df = pd.read_excel(
-            "K:/Shared drives/RPI-Dan Peled HIPAA/Seder/Funds_recommendations/segel_thin.xlsx")
+        self.senior_df = pd.read_excel("segel_thin.xlsx")
         self.fit_action = False if pubs_df is None else True
         self.device = device  # CUDA or cpu
         self.fit_time = 0
