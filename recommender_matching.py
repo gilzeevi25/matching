@@ -196,7 +196,7 @@ class Recommender_matching():
 
 
 if 'rec' not in st.session_state:
-    st.session_state['rec']= Recommender_matching_segel(torch.load('specter_torch.pt'),torch.device('cuda' if torch.cuda.is_available() else 'cpu'))
+    st.session_state['rec']= Recommender_matching_segel(SentenceTransformer('allenai-specter'),torch.device('cuda' if torch.cuda.is_available() else 'cpu'))
 st.title('Matching search engine based on publications')
 st.subheader('Developed by Research Authority - University of Haifa')
 title = st.text_input('Enter a Piece of text to find a match')
