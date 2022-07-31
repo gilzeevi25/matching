@@ -6,7 +6,7 @@ from tqdm import tqdm
 tqdm.pandas()
 import time
 import numexpr as ne
-#from sentence_transformers import SentenceTransformer
+from sentence_transformers import SentenceTransformer
 import streamlit as st
 import pickle
 
