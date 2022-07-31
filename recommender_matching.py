@@ -200,7 +200,7 @@ st.title('Matching search engine based on publications')
 st.subheader('Developed by Research Authority - University of Haifa')
 title = st.text_input('Enter a Piece of text to find a match')
 threshold = st.text_input('Enter a Threshold for matching scores')
-st.write('Presenting only researchers with more than 80% match:')
+st.write(f'Presenting only researchers with more than {threshold}% match:')
 st.dataframe(data=st.session_state['rec'].predict(title, Th=int(threshold)), width=None, height=None)
 #
 
