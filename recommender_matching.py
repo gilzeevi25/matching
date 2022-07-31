@@ -44,11 +44,11 @@ class Recommender_matching_segel():
             self.wrn = pickle.load(f)
         f.close()
         self.pubs_df = pd.DataFrame(loaded_dict.items(), columns=['Name', 'embedded'])
+        self.pubs_df['Name'] = self.pubs_df['Name'].str.lower()
 
     def predict(self, text, Th=80, Number=0):
-        t = time.time()
         self.recommended = pd.DataFrame(
-            columns=['Text_Matched', 'Researcher', 'match score', 'faculties', 'circle', 'warning'])
+            columns=['Text_Matched', 'Researcher', 'match score', 'faculties', 'circle', 'mail'])
         self.text_embd = self.embed_text(text)
         for name in tqdm(self.pubs_df.Name.unique()):
             rel_df = self.pubs_df[self.pubs_df.Name == name].reset_index(drop=True)
@@ -56,10 +56,10 @@ class Recommender_matching_segel():
             author_embeddings = rel_df.embedded.values[0]
             sim = self.cosine_sim(author_embeddings, self.text_embd)
             if Number > 0:
-                self.recommended.loc[-1] = [text[0:10] + '...', name, sim, vals[1], vals[2], self.wrn[name]];
+                self.recommended.loc[-1] = [text[0:10] + '...', name, sim, vals[1], vals[2], vals[3]];
                 self.recommended.reset_index(drop=True, inplace=True)
-            elif sim * 100 >= Th:  # add to general recommendation table if score is higher than decided threshold (default is 90% score)
-                self.recommended.loc[-1] = [text[0:10] + '...', name, sim, vals[1], vals[2], self.wrn[name]];
+            elif sim * 100 >= Th:  # add to general recommendation table if score is higher than decided threshold (default is 80% score)
+                self.recommended.loc[-1] = [text[0:10] + '...', name, sim, vals[1], vals[2], vals[3]];
                 self.recommended.reset_index(drop=True, inplace=True)
         if Number > 0:
             self.recommended = self.recommended.loc[self.recommended['match score'].nlargest(Number).index]
@@ -67,8 +67,6 @@ class Recommender_matching_segel():
             ((self.recommended['match score'] * 100).apply(np.round)).apply(lambda x: int(x))).apply(
             lambda x: str(x) + '%')
         self.recommended = self.recommended.sort_values(by='match score', ascending=False)
-        self.predict_time = (time.time() - t) / 60  # record mintues, not seconds
-        print(f'Time taken to Predict:{self.predict_time:.0f} minutes')
         return self.recommended.reset_index(drop=True)
 
     def embed_text(self, x):
