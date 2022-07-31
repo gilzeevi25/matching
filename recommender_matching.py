@@ -6,7 +6,7 @@ from tqdm import tqdm
 tqdm.pandas()
 import time
 import numexpr as ne
-from sentence_transformers import SentenceTransformer
+#from sentence_transformers import SentenceTransformer
 import streamlit as st
 import pickle
 
@@ -47,6 +47,7 @@ class Recommender_matching_segel():
         self.pubs_df['Name'] = self.pubs_df['Name'].str.lower()
 
     def predict(self, text, Th=80, Number=0):
+        t = time.time()
         self.recommended = pd.DataFrame(
             columns=['Text_Matched', 'Researcher', 'match score', 'faculties', 'circle', 'mail'])
         self.text_embd = self.embed_text(text)
@@ -58,7 +59,7 @@ class Recommender_matching_segel():
             if Number > 0:
                 self.recommended.loc[-1] = [text[0:10] + '...', name, sim, vals[1], vals[2], vals[3]];
                 self.recommended.reset_index(drop=True, inplace=True)
-            elif sim * 100 >= Th:  # add to general recommendation table if score is higher than decided threshold (default is 80% score)
+            elif sim * 100 >= Th:  # add to general recommendation table if score is higher than decided threshold (default is 90% score)
                 self.recommended.loc[-1] = [text[0:10] + '...', name, sim, vals[1], vals[2], vals[3]];
                 self.recommended.reset_index(drop=True, inplace=True)
         if Number > 0:
@@ -67,6 +68,8 @@ class Recommender_matching_segel():
             ((self.recommended['match score'] * 100).apply(np.round)).apply(lambda x: int(x))).apply(
             lambda x: str(x) + '%')
         self.recommended = self.recommended.sort_values(by='match score', ascending=False)
+        self.predict_time = (time.time() - t) / 60  # record mintues, not seconds
+        print(f'Time taken to Predict:{self.predict_time:.0f} minutes')
         return self.recommended.reset_index(drop=True)
 
     def embed_text(self, x):
@@ -193,12 +196,12 @@ class Recommender_matching():
 
 
 if 'rec' not in st.session_state:
-    st.session_state['rec']= Recommender_matching_segel(SentenceTransformer('allenai-specter'),torch.device('cuda' if torch.cuda.is_available() else 'cpu'))
+    st.session_state['rec']= Recommender_matching_segel(torch.load('specter_torch.pt'),torch.device('cuda' if torch.cuda.is_available() else 'cpu'))
 st.title('Matching search engine based on publications')
 st.subheader('Developed by Research Authority - University of Haifa')
 title = st.text_input('Enter a Piece of text to find a match')
 threshold = st.text_input('Enter a Threshold for matching scores')
-st.write(f'Presenting only researchers with more than {threshold}% match:')
+st.write('Presenting only researchers with more than 80% match:')
 st.dataframe(data=st.session_state['rec'].predict(title, Th=int(threshold)), width=None, height=None)
 #
 
