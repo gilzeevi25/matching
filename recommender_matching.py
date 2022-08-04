@@ -207,7 +207,7 @@ st.dataframe(data=df, width=None, height=None)
 
 @st.cache
 def convert_df(df):
-   return df.to_csv().encode('utf-8')
+   return df.to_csv().encode('utf-8-sig')
 
 
 csv = convert_df(df)
