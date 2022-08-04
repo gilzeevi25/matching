@@ -202,7 +202,22 @@ st.subheader('Developed by Research Authority - University of Haifa')
 title = st.text_input('Enter a Piece of text to find a match')
 threshold = st.text_input('Enter a Threshold for matching scores')
 st.write(f'Presenting only researchers with more than {threshold}% match:')
-st.dataframe(data=st.session_state['rec'].predict(title, Th=int(threshold)), width=None, height=None)
-#
+df = st.session_state['rec'].predict(title, Th=int(threshold))
+st.dataframe(data=df, width=None, height=None)
+
+@st.cache
+def convert_df(df):
+   return df.to_csv().encode('utf-8')
+
+
+csv = convert_df(df)
+
+st.download_button(
+   "Press to Download",
+   csv,
+   "file.csv",
+   "text/csv",
+   key='download-csv'
+)
 
 
