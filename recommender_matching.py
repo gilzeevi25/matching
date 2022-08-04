@@ -207,7 +207,7 @@ st.dataframe(data=df, width=None, height=None)
 
 @st.cache
 def convert_df(df):
-   return df.to_csv(index=False ,encoding = 'utf-8-sig')
+   return df.to_csv(index=False ,encoding = 'utf-8')
 
 
 csv = convert_df(df)
@@ -215,7 +215,7 @@ csv = convert_df(df)
 st.download_button(
    "Press to Download",
    csv,
-   "file.csv",
+   f"{title[0:10]}.csv",
    "text/csv",
    key='download-csv'
 )
